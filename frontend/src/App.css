@@ -1,0 +1,182 @@
+.app {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 1.25rem 3rem;
+  text-align: center;
+  transition: max-width 0.3s ease-in-out;
+}
+
+.app.wide-layout {
+  max-width: 98vw;
+}
+
+.app-header {
+  padding: 2rem 0 1.5rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 1.75rem;
+}
+
+.app-header-inner {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.app-logo-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  font-weight: 800;
+  font-size: 0.875rem;
+  letter-spacing: -0.02em;
+  color: #fff;
+  background: linear-gradient(145deg, var(--accent), #4338ca);
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.35);
+}
+
+.app-title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--text);
+}
+
+.app-tagline {
+  margin: 0.2rem 0 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.stepper {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0;
+  margin-bottom: 1.25rem;
+}
+
+.stepper-connector {
+  flex: 1;
+  height: 2px;
+  margin-top: 15px;
+  min-width: 4px;
+  background: var(--border);
+  align-self: flex-start;
+}
+
+.stepper-connector--active {
+  background: linear-gradient(90deg, var(--accent), var(--success));
+}
+
+.stepper-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+  max-width: 22%;
+}
+
+.stepper-dot {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  background: var(--bg-elevated);
+  border: 2px solid var(--border-strong);
+  border-radius: 50%;
+  transition: background 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s;
+}
+
+.stepper-item--current .stepper-dot {
+  color: #fff;
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-soft);
+}
+
+.stepper-item--done .stepper-dot {
+  color: var(--success);
+  border-color: var(--success);
+  background: var(--success-soft);
+}
+
+.stepper-label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  text-align: center;
+  line-height: 1.2;
+}
+
+.stepper-item--current .stepper-label {
+  color: var(--text);
+}
+
+.step-heading {
+  margin: 0 0 1.25rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.content-card {
+  text-align: left;
+  margin-bottom: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.wide-card {
+  max-width: 100% !important;
+  width: 100vw !important;
+  margin-left: calc(-50vw + 50%);
+  padding: 0 !important;
+  background: #0d1117 !important;
+  border-radius: 0 !important;
+  overflow: hidden;
+  min-height: calc(100vh - 160px);
+}
+
+.nav-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: center;
+  padding-top: 0.5rem;
+}
+
+@media (max-width: 600px) {
+  .app-header-inner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .stepper-label {
+    font-size: 0.55rem;
+  }
+
+  .stepper-dot {
+    width: 28px;
+    height: 28px;
+    font-size: 0.75rem;
+  }
+
+  .stepper-connector {
+    margin-top: 13px;
+  }
+
+  .stepper-item {
+    max-width: 24%;
+  }
+}
