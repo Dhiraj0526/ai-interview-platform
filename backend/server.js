@@ -259,7 +259,7 @@ function updateExcelReport(assessment) {
 async function runCodeLocally(language, code, stdinText, timeoutMs = 5000) {
   return execQueue.add(() => new Promise(async (resolve) => {
     try {
-      const comp = (language === "python" || language === "python3") ? "cpython-3.10.2" : "openjdk-head";
+      const comp = (language === "python" || language === "python3") ? "cpython-3.10.15" : "openjdk-jdk-22+36";
       const res = await axios.post("https://wandbox.org/api/compile.json", {
         compiler: comp,
         code: code,
@@ -674,7 +674,7 @@ io.on("connection", (socket) => {
   socket.on("run-interactive", async (data) => {
     const { language, code, initialInput } = data;
     try {
-      const comp = (language === "python" || language === "python3") ? "cpython-3.10.2" : "openjdk-head";
+      const comp = (language === "python" || language === "python3") ? "cpython-3.10.15" : "openjdk-jdk-22+36";
       socket.emit("output", "Running code in secure cloud runtime...\n");
       
       const res = await axios.post("https://wandbox.org/api/compile.json", {
