@@ -258,65 +258,23 @@ function updateExcelReport(assessment) {
 
 async function runCodeLocally(language, code, stdinText, timeoutMs = 5000) {
   return execQueue.add(() => new Promise(async (resolve) => {
-    const rootTmp = os.tmpdir();
-    const id = crypto.randomUUID().replace(/-/g, "");
-    const workDir = path.join(rootTmp, `ai_eval_${id}`);
-    await fsPromises.mkdir(workDir, { recursive: true });
-
-    let cmd = ""; let args = []; let filePath = "";
-    if (language === "python" || language === "python3") {
-      filePath = path.join(workDir, "solution.py");
-      cmd = "python"; args = ["-u", filePath];
-    } else if (language === "java") {
-      filePath = path.join(workDir, "Main.java");
-      cmd = "java"; args = [filePath];
-    } else {
-      return resolve({ stdout: "", stderr: "Unsupported language", code: 1 });
-    }
-
     try {
-      await fsPromises.writeFile(filePath, code, "utf8");
-      let stdout = ""; let stderr = "";
-      const child = spawn(cmd, args, { cwd: workDir });
+      const lang = (language === "python" || language === "python3") ? "python" : "java";
+      const ver = (lang === "python") ? "3.10.0" : "15.0.2";
+      const res = await axios.post("https://emkc.org/api/v2/piston/execute", {
+        language: lang,
+        version: ver,
+        files: [{ content: code }],
+        stdin: String(stdinText || "")
+      }, { timeout: 15000 });
 
-      child.on("error", (err) => {
-        console.error(`[Local Runner] Spawn Error for ${cmd}:`, err.message);
-        clearTimeout(timer);
-        resolve({ stdout: "", stderr: `Execution environment error: ${err.message}. Please check if ${cmd} is installed.`, code: 1 });
-      });
+      const stdout = res.data?.run?.stdout || "";
+      const stderr = res.data?.run?.stderr || "";
+      const codeExit = res.data?.run?.code || 0;
 
-      child.stdin.on("error", (err) => {
-        console.warn("[Local Runner] Child stdin write error (EPIPE):", err.message);
-      });
-
-      let timer = setTimeout(() => { 
-        child.kill("SIGKILL"); 
-        resolve({ stdout, stderr: "Timed Out", code: 1 }); 
-      }, timeoutMs);
-
-      if (stdinText) { 
-        child.stdin.write(String(stdinText)); 
-        if (!String(stdinText).endsWith("\n")) child.stdin.write("\n");
-      }
-      child.stdin.end();
-      
-      child.stdout.on("data", (d) => (stdout += d.toString()));
-      child.stderr.on("data", (d) => (stderr += d.toString()));
-      
-      child.on("close", async (exitCode) => {
-        clearTimeout(timer);
-        try { await fsPromises.rm(workDir, { recursive: true, force: true }); } catch (e) {}
-        resolve({ stdout: stdout.replace(/\r\n/g, "\n"), stderr: stderr.replace(/\r\n/g, "\n"), code: exitCode });
-      });
-      
-      child.on("error", async (err) => {
-        clearTimeout(timer);
-        try { await fsPromises.rm(workDir, { recursive: true, force: true }); } catch (e) {}
-        resolve({ stdout: "", stderr: err.message, code: 1 });
-      });
-
+      resolve({ stdout: stdout.replace(/\r\n/g, "\n"), stderr: stderr.replace(/\r\n/g, "\n"), code: codeExit });
     } catch (err) {
-      resolve({ stdout: "", stderr: err.message, code: 1 });
+      resolve({ stdout: "", stderr: `Execution service error: ${err.message}`, code: 1 });
     }
   }));
 }
@@ -716,70 +674,33 @@ const activeProcesses = new Map();
 io.on("connection", (socket) => {
   socket.on("run-interactive", async (data) => {
     const { language, code, initialInput } = data;
-    const rootTmp = os.tmpdir();
-    const id = crypto.randomUUID().replace(/-/g, "");
-    const workDir = path.join(rootTmp, `ai_interact_${id}`);
-    await fsPromises.mkdir(workDir, { recursive: true });
-
-    let cmd = ""; let args = []; let filePath = "";
-    if (language === "python") {
-      filePath = path.join(workDir, "solution.py");
-      cmd = "python"; args = ["-u", filePath]; // -u for unbuffered output
-    } else if (language === "java") {
-      filePath = path.join(workDir, "Main.java");
-      cmd = "java"; args = [filePath];
-    } else {
-      socket.emit("output", "Unsupported language\n");
-      return;
-    }
-
     try {
-        await fsPromises.writeFile(filePath, code, "utf8");
-        const child = spawn(cmd, args, { cwd: workDir });
-        activeProcesses.set(socket.id, child);
+      const lang = (language === "python" || language === "python3") ? "python" : "java";
+      const ver = (lang === "python") ? "3.10.0" : "15.0.2";
+      socket.emit("output", "Running code in secure cloud runtime...\n");
+      
+      const res = await axios.post("https://emkc.org/api/v2/piston/execute", {
+        language: lang,
+        version: ver,
+        files: [{ content: code }],
+        stdin: String(initialInput || "")
+      }, { timeout: 15000 });
 
-        if (initialInput) {
-            child.stdin.write(initialInput);
-            if (!initialInput.endsWith("\n")) child.stdin.write("\n");
-        }
+      const stdout = res.data?.run?.stdout || "";
+      const stderr = res.data?.run?.stderr || "";
+      const codeExit = res.data?.run?.code || 0;
 
-        child.stdout.on("data", (d) => socket.emit("output", d.toString()));
-        child.stderr.on("data", (d) => socket.emit("output", d.toString()));
-
-        child.on("close", async (exitCode) => {
-          socket.emit("exit", { code: exitCode });
-          activeProcesses.delete(socket.id);
-          try { await fsPromises.rm(workDir, { recursive: true, force: true }); } catch (e) {}
-        });
-
-        child.on("error", (err) => {
-          socket.emit("output", `Execution Error: ${err.message}\n`);
-          activeProcesses.delete(socket.id);
-        });
-
-        const timer = setTimeout(() => {
-          if (activeProcesses.has(socket.id)) {
-            child.kill("SIGKILL");
-            socket.emit("output", "\nProcess Timed Out (30s)\n");
-          }
-        }, 30000);
-
-        socket.on("disconnect", () => {
-          if (activeProcesses.has(socket.id)) {
-            child.kill("SIGKILL");
-            activeProcesses.delete(socket.id);
-          }
-        });
+      if (stdout) socket.emit("output", stdout);
+      if (stderr) socket.emit("output", stderr);
+      socket.emit("exit", { code: codeExit });
     } catch (err) {
-        socket.emit("output", `Server Error: ${err.message}\n`);
+      socket.emit("output", `Execution Error: ${err.message}\n`);
+      socket.emit("exit", { code: 1 });
     }
   });
 
   socket.on("input-interactive", (text) => {
-    const child = activeProcesses.get(socket.id);
-    if (child && !child.killed) {
-      child.stdin.write(text);
-    }
+    // Interactive mode handled via initialInput
   });
 });
 
