@@ -260,9 +260,10 @@ async function runCodeLocally(language, code, stdinText, timeoutMs = 5000) {
   return execQueue.add(() => new Promise(async (resolve) => {
     try {
       const comp = (language === "python" || language === "python3") ? "cpython-3.10.15" : "openjdk-jdk-22+36";
+      const procCode = code ? code.replace(/public\s+class\s+/g, "class ") : "";
       const res = await axios.post("https://wandbox.org/api/compile.json", {
         compiler: comp,
-        code: code,
+        code: procCode,
         stdin: String(stdinText || "")
       }, { timeout: 15000 });
 
@@ -675,11 +676,12 @@ io.on("connection", (socket) => {
     const { language, code, initialInput } = data;
     try {
       const comp = (language === "python" || language === "python3") ? "cpython-3.10.15" : "openjdk-jdk-22+36";
+      const procCode = code ? code.replace(/public\s+class\s+/g, "class ") : "";
       socket.emit("output", "Running code in secure cloud runtime...\n");
       
       const res = await axios.post("https://wandbox.org/api/compile.json", {
         compiler: comp,
-        code: code,
+        code: procCode,
         stdin: String(initialInput || "")
       }, { timeout: 15000 });
 
