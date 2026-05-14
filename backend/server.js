@@ -259,18 +259,17 @@ function updateExcelReport(assessment) {
 async function runCodeLocally(language, code, stdinText, timeoutMs = 5000) {
   return execQueue.add(() => new Promise(async (resolve) => {
     try {
-      const lang = (language === "python" || language === "python3") ? "python" : "java";
-      const ver = (lang === "python") ? "3.10.0" : "15.0.2";
-      const res = await axios.post("https://emkc.org/api/v2/piston/execute", {
-        language: lang,
-        version: ver,
-        files: [{ content: code }],
+      const comp = (language === "python" || language === "python3") ? "cpython-3.10.2" : "openjdk-head";
+      const res = await axios.post("https://wandbox.org/api/compile.json", {
+        compiler: comp,
+        code: code,
         stdin: String(stdinText || "")
       }, { timeout: 15000 });
 
-      const stdout = res.data?.run?.stdout || "";
-      const stderr = res.data?.run?.stderr || "";
-      const codeExit = res.data?.run?.code || 0;
+      const data = res.data || {};
+      const stdout = data.program_output || data.program_message || "";
+      const stderr = data.program_error || data.compiler_error || "";
+      const codeExit = String(data.status) === "0" ? 0 : 1;
 
       resolve({ stdout: stdout.replace(/\r\n/g, "\n"), stderr: stderr.replace(/\r\n/g, "\n"), code: codeExit });
     } catch (err) {
@@ -675,20 +674,19 @@ io.on("connection", (socket) => {
   socket.on("run-interactive", async (data) => {
     const { language, code, initialInput } = data;
     try {
-      const lang = (language === "python" || language === "python3") ? "python" : "java";
-      const ver = (lang === "python") ? "3.10.0" : "15.0.2";
+      const comp = (language === "python" || language === "python3") ? "cpython-3.10.2" : "openjdk-head";
       socket.emit("output", "Running code in secure cloud runtime...\n");
       
-      const res = await axios.post("https://emkc.org/api/v2/piston/execute", {
-        language: lang,
-        version: ver,
-        files: [{ content: code }],
+      const res = await axios.post("https://wandbox.org/api/compile.json", {
+        compiler: comp,
+        code: code,
         stdin: String(initialInput || "")
       }, { timeout: 15000 });
 
-      const stdout = res.data?.run?.stdout || "";
-      const stderr = res.data?.run?.stderr || "";
-      const codeExit = res.data?.run?.code || 0;
+      const dataObj = res.data || {};
+      const stdout = dataObj.program_output || dataObj.program_message || "";
+      const stderr = dataObj.program_error || dataObj.compiler_error || "";
+      const codeExit = String(dataObj.status) === "0" ? 0 : 1;
 
       if (stdout) socket.emit("output", stdout);
       if (stderr) socket.emit("output", stderr);
